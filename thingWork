@@ -1,0 +1,520 @@
+#include <Pololu3piPlus32U4.h>
+using namespace Pololu3piPlus32U4;
+
+Encoders encoders;  //used to measure roatations of the wheels
+Buzzer buzzer;      //we can use this to make sounds to indicate different events
+Motors motors;      //use this to move
+ButtonA buttonA;    //use this to activate events with the press of a button
+
+long t0; // time when we last changed the light
+uint8_t val; // the current state of the light
+const int ledPin = LED_BUILTIN;  // the number of the LED pin
+
+// Variables will change:
+int ledState = LOW;  // ledState used to set the LED
+
+// Generally, you should use "unsigned long" for variables that hold time
+// The value will quickly become too large for an int to store
+unsigned long previousMillis = 0;  // will store last time LED was updated
+
+// constants won't change:
+const long interval = 1000;
+
+unsigned long currentMillis;
+unsigned long prevMillis;
+const unsigned long Period = 50;
+
+long countsLeft = 0;
+long countsRight = 0;
+long prevLeft = 0;
+long prevRight = 0;
+//lights 
+
+
+int NUM_RED_BLINKS = 5;   // max number of on/off cycles for the red LED
+int redBlinksSoFar = 0;   // how many on/off cycles completed for the red LED
+bool isRedLedOn = false;  // used to remember whether the red LED is currently on
+
+int NUM_GREEN_BLINKS = 8;   // max number of on/off cycles for the green LED
+int greenBlinksSoFar = 0;   // how many on/off cycles completed for the green LED
+bool isGreenLedOn = false;  // used to remember whether the red LED is currently on
+
+int NUM_YELLOW_BLINKS = 4;   // max number of on/off cycles for the yellow LED
+int yellowBlinksSoFar = 0;   // how many on/off cycles completed for the yellow LED
+bool isYellowLedOn = false;  // used to remember whether the red LED is currently on
+
+typedef void (*Task)();  // defines that a "Task" is a certain kind of function
+Task currentTask;        // used to remember what is our current task
+
+
+
+// Store the new song in program space using the PROGMEM macro.
+
+
+const char danceSong[] PROGMEM =
+  "O4 T120 L8 EFGEFGEFGEFGEFGEFGEFG EFGEFGEFGEFGEFGEFGEFG EFGEFGEFGEFGEFGEFGEFG EFGEFGEFGEFGEFGEFGEFG";
+
+const char fugue[] PROGMEM = "<gf<af<b-e<ge c#e<b-e<ae<ge <fe<ge<ad<fd"
+  "O5 e>ee>ef>df>d b->c#b->c#a>df>d e>ee>ef>df>d"
+  "e>d>c#>db>d>c#b >c#agaegfe f O6 dc#dfdc#<b c#4";
+
+// const char danceee[] PROGMEM =
+//   "O5 T120 L8 G#GF# G#GF# G#GF# G#GF# G#GF# G#GF# G#GF# G#GF#";
+ 
+  const char danceee[] PROGMEM =
+  "O5 T120 L8 G#GF# G#GF# G#GF# G#GF# G#GF# G#GF# G#GF# G#GF#";
+ 
+
+
+//done functions
+bool p1 = true;
+bool p2 = false;
+bool p3 = false;
+bool p4 = false;
+bool p5 = false;
+bool p6 = false;
+bool p7 = false;
+bool p8 = false;
+bool p9 = false;
+bool p10 = false;
+
+bool check = true;
+
+const int CLICKS_PER_ROTATION = 12;
+const float GEAR_RATIO = 75.81F;
+const float WHEEL_DIAMETER = 3.2;
+const float WHEEL_CIRCUMFERENCE = 10.0531f;  //wheel revolutions
+
+float SL = 0.0F;  //distance traveled by the left wheel
+float Sr = 0.0F;  //distance traveled by the right wheel
+
+bool start1 = true;
+bool start2 = false;
+int distance[3] = { 12, -12, 18 };
+
+
+
+
+void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(57600);
+  currentTask = blinkRed; 
+  
+  
+}
+
+void loop() {
+    if (start1 == true) {
+
+
+      start();
+      delay(1000);
+    }
+ 
+ 
+}
+
+
+void start() {
+  if (p1 == true) {
+    
+
+    //calling first forward
+    Forward12();
+
+    //switch to next loop
+    
+    delay(500);
+  }else if (p2 == true) {
+    
+    backwards12();
+
+    
+    delay(500);
+  }else if (p3 == true) {
+
+    
+
+    //calling last forward
+    Forward18();
+
+    //switch to next loop
+    // buzzer.play("!L16 V8 c23d23e23f3g3ab>23c23ba23g32fedc");
+   
+  } else if (p4 == true) {
+
+    
+
+    // calling the function
+    danceMove1();
+
+    //switch to next loop
+
+  } else if (p5 == true) {
+
+    
+
+    // calling the function
+    danceMove2();
+
+    //switch to next loop
+
+    
+  }else if (p6 == true) {
+
+  
+
+    // calling the function
+    danceMove4();
+
+    //switch to next loop
+
+    
+  } else if (p7 == true) {
+    
+   Forward13(); 
+
+
+
+  } else if (p8 == true ) {
+
+
+    danceMove7(); 
+
+  } else if (p9 == true) {
+    Forward123(); 
+    
+  }else if (p10 == true) {
+    danceMove356(); 
+  } else { 
+  start2 = true;
+  start1 = false;
+  }
+          // Start playing the cooler song from program space.
+ buzzer.playFromProgramSpace(danceSong);
+ buzzer.playFromProgramSpace(fugue);
+  if (currentTask) {  // if we have a task...
+    currentTask();    // execute that current task
+  }
+ 
+}
+
+
+
+void checkEncoders() {
+  currentMillis = millis();
+  if (currentMillis > prevMillis + Period) {
+    countsLeft += encoders.getCountsAndResetLeft();
+    countsRight += encoders.getCountsAndResetRight();
+
+    SL += ((countsLeft - prevLeft) / (CLICKS_PER_ROTATION * GEAR_RATIO) * WHEEL_CIRCUMFERENCE);
+    Sr += ((countsRight - prevRight) / (CLICKS_PER_ROTATION * GEAR_RATIO) * WHEEL_CIRCUMFERENCE);
+
+
+
+
+
+    //printing out counts
+    Serial.print("Left: ");
+    Serial.print(SL);
+
+    Serial.print("           Right: ");
+    Serial.println(Sr);
+
+    prevLeft = countsLeft;
+    prevRight = countsRight;
+    prevMillis = currentMillis;
+  }
+}
+
+void Forward12() {
+  checkEncoders();
+  int Speed = 200;
+
+  if (SL < 57.5) {
+    //start slowing down, left wheels
+    if (SL > 43.5) {
+
+
+      if (Speed < 70) Speed = 70;
+    }
+
+  } else {
+    Speed = 0;
+    p2 = true;
+    p1 = false;
+    SL = 0;
+  }
+
+  motors.setSpeeds(Speed, Speed);
+}
+
+void backwards12() {
+  checkEncoders();
+  int Speed = -200;
+
+  if (SL > -50) {
+    //start slowing down, left wheels
+    if (SL < -42) {
+
+
+      if (Speed < -40) Speed = -40;
+    }
+
+
+  } else {
+    Speed = 0;
+    p3 = true;
+    p2 = false;
+    SL = 0;
+  }
+  motors.setSpeeds(Speed, Speed);
+}
+
+void Forward18() {
+  checkEncoders();
+  int Speed = 200;
+
+  if (SL < 55.72) {
+    //start slowing down, left wheels
+    if (SL > 40.5) {
+
+
+      if (Speed < 70) Speed = 70;
+    }
+
+  } else {
+    Speed = 0;
+    p4 = true;
+    p3 = false;
+    Sr = 0;
+  }
+  motors.setSpeeds(Speed, Speed);
+}
+
+void danceMove1() {
+  checkEncoders();
+  int Speed = 200;
+
+  if (Sr < 55.72) {
+    //start slowing down, left wheels
+    if (Sr > 40.5) {
+
+
+      if (Speed < 70) Speed = 70;
+    }
+
+  } else {
+    Speed = 0;
+    p5 = true;
+    p4 = false;
+    Sr = 0;
+  }
+  motors.setSpeeds(0, Speed);
+}
+
+void danceMove2() {
+  checkEncoders();
+  int Speed = -200;
+
+  if (Sr > -55.72) {
+    //start slowing down, left wheels
+    if (Sr < -40.5) {
+
+
+      if (Speed < -70) Speed = -70;
+    }
+
+  } else {
+    Speed = 0;
+    p6 = true;
+    p5 = false;
+    Sr = 0;
+  }
+  motors.setSpeeds(0, Speed);
+}
+
+void danceMove3() {
+  checkEncoders();
+  int Speed = 200;
+
+  if (Sr < 55.72) {
+    //start slowing down, left wheels
+    if (Sr > 40.5) {
+
+
+      if (Speed < 70) Speed = 70;
+    }
+
+  } else {
+    Speed = 0;
+    p7 = true;
+    p6 = false;
+    Sr = 0;
+  }
+  motors.setSpeeds(Speed, Speed);
+}
+
+void danceMove4() {
+  checkEncoders();
+  int Speed = 200;
+
+  if (Sr < 95.72) {
+
+    if (Speed < 70) Speed = 70;
+
+  } else {
+    Speed = 0;
+    Serial.print("UR mom");
+    p7 = true; 
+    p6 = false;
+    SL = 0;
+  }
+  motors.setSpeeds(0, Speed);
+}
+
+void Forward13() {
+  checkEncoders();
+  int Speed = 200;
+
+  if (SL < 57.5) {
+    //start slowing down, left wheels
+    if (SL > 43.5) {
+
+
+      if (Speed < 70) Speed = 70;
+    }
+
+  } else {
+    Speed = 0;
+    p8 = true;
+    p7 = false;
+    Sr = 0;
+  }
+
+  motors.setSpeeds(Speed, Speed);
+}
+
+
+void danceMove7() {
+  checkEncoders();
+  int Speed = -200;
+
+  if (Sr > -55.72) {
+    //start slowing down, left wheels
+    if (Sr < -40.5) {
+
+
+      if (Speed < -70) Speed = -70;
+    }
+
+  } else {
+    Speed = 0;
+    p9 = true; 
+    p8 = false;
+    SL = 0;
+  }
+  motors.setSpeeds(0, Speed);
+}
+
+void blinkRed() {
+  unsigned long currentMillis = millis();
+  if (currentMillis - prevMillis >= Period) {  // have PERIOD milliseconds elapsed since last LED change?
+    if (isRedLedOn == true) {
+      ledRed(0);           // turn the red LED off
+      isRedLedOn = false;  // remember that the red LED is now off
+      redBlinksSoFar++;    // count how many times we've turned the red LED on-and-off
+    } else {
+      ledRed(1);          // turn the red LED on
+      isRedLedOn = true;  // remember that the red LED is now on
+    }
+    prevMillis = currentMillis;  // remember the time now that we just changed the LED
+  }
+  // When we're done with this task, set the next task
+  if (redBlinksSoFar >= NUM_RED_BLINKS) {
+    redBlinksSoFar = 0;         // reset the count for next time
+    currentTask = blinkGreen;  // next task is to blink the green LED
+  }
+}
+
+void blinkGreen() {
+  unsigned long currentMillis = millis();
+  if (currentMillis - prevMillis >= Period) {  // have PERIOD milliseconds elapsed since last LED change?
+    if (isGreenLedOn == true) {
+      ledGreen(0);           // turn the green LED off
+      isGreenLedOn = false;  // remember that the green LED is now off
+      greenBlinksSoFar++;    // count how many times we've turned the green LED on-and-off
+    } else {
+      ledGreen(1);          // turn the green LED on
+      isGreenLedOn = true;  // remember that the green LED is now on
+    }
+    prevMillis = currentMillis;  // remember the time now that we just changed the LED
+  }
+  // When we're done with this task, set the next task
+  if (greenBlinksSoFar >= NUM_GREEN_BLINKS) {
+    greenBlinksSoFar = 0;        // reset the count for next time
+    currentTask = blinkYellow;  // next task is to blink the yellow LED
+  }
+}
+
+void blinkYellow() {
+  unsigned long currentMillis = millis();
+  if (currentMillis - prevMillis >= Period) {  // have PERIOD milliseconds elapsed since last LED change?
+    if (isYellowLedOn == true) {
+      ledYellow(0);           // turn the yellow LED off
+      isYellowLedOn = false;  // remember that the yellow LED is now off
+      yellowBlinksSoFar++;    // count how many times we've turned the yellow LED on-and-off
+    } else {
+      ledYellow(1);          // turn the yellow LED on
+      isYellowLedOn = true;  // remember that the yellow LED is now on
+    }
+    prevMillis = currentMillis;  // remember the time now that we just changed the LED
+  }
+  // When we're done with this task, set the next task
+  if (yellowBlinksSoFar >= NUM_YELLOW_BLINKS) {
+    yellowBlinksSoFar = 0;    // reset the count for next time
+    currentTask = blinkRed;  // change this to NULL to stop repeating the sequence
+  }
+}
+
+void Forward123() {
+  checkEncoders();
+  int Speed = 200;
+
+  if (SL < 57.5) {
+    //start slowing down, left wheels
+    if (SL > 43.5) {
+
+
+      if (Speed < 70) Speed = 70;
+    }
+
+  } else {
+    Speed = 0;
+    p10 = true;
+    p9 = false;
+    Sr = 0;
+  }
+
+  motors.setSpeeds(Speed, Speed);
+}
+
+void danceMove356() {
+  checkEncoders();
+  int Speed = 150;
+
+  if (Sr < 105.72) {
+    //start slowing down, left wheels
+    if (Sr > 80.5) {
+
+
+      if (Speed < 70) Speed = 70;
+    }
+
+  } else {
+    Speed = 0;
+    p10 = false;
+    Sr = 0;
+  }
+  motors.setSpeeds(0, Speed);
+}
