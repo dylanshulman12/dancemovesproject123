@@ -1,0 +1,38 @@
+
+#include <PololuBuzzer.h>
+
+PololuBuzzer buzzer;
+
+// Store the new song in program space using the PROGMEM macro.
+
+
+const char danceSong[] PROGMEM =
+  "O4 T120 L8 EFGEFGEFGEFGEFGEFGEFG EFGEFGEFGEFGEFGEFGEFG EFGEFGEFGEFGEFGEFGEFG EFGEFGEFGEFGEFGEFGEFG";
+
+const char fugue[] PROGMEM = "<gf<af<b-e<ge c#e<b-e<ae<ge <fe<ge<ad<fd"
+  "O5 e>ee>ef>df>d b->c#b->c#a>df>d e>ee>ef>df>d"
+  "e>d>c#>db>d>c#b >c#agaegfe f O6 dc#dfdc#<b c#4";
+
+// const char danceee[] PROGMEM =
+//   "O5 T120 L8 G#GF# G#GF# G#GF# G#GF# G#GF# G#GF# G#GF# G#GF#";
+ 
+  const char danceee[] PROGMEM =
+  "O5 T120 L8 G#GF# G#GF# G#GF# G#GF# G#GF# G#GF# G#GF# G#GF#";
+ 
+
+
+void setup()
+{
+}
+
+void loop()
+{
+  // Start playing the cooler song from program space.
+  buzzer.playFromProgramSpace(danceSong);
+ buzzer.playFromProgramSpace(fugue);
+ 
+ 
+  // Wait until it is done playing.
+  while (buzzer.isPlaying()) { }
+  delay(1000);
+}
